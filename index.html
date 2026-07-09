@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard en vivo · Capacitación</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface-muted: #f0efe9;
+    --border: #e1e0d9;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --accent: #2a78d6;
+    --accent-bg: #e6f1fb;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  button:hover { background: var(--surface-muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1f66bd; }
+  button.icon { padding: 8px 10px; }
+  .code-block { text-align: center; }
+  .code-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+  .code-row { display: flex; align-items: center; gap: 8px; justify-content: center; }
+  #codeDisplay {
+    font-size: 34px;
+    font-weight: 600;
+    font-family: "SF Mono", Consolas, monospace;
+    letter-spacing: 4px;
+  }
+  .metrics { display: flex; gap: 12px; }
+  .metric {
+    background: var(--surface-muted);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    min-width: 110px;
+  }
+  .metric-label { font-size: 12px; color: var(--text-secondary); }
+  .metric-value { font-size: 24px; font-weight: 600; }
+  #statusLine { font-size: 13px; color: var(--text-muted); margin-bottom: 1.25rem; }
+  #questionsContainer { display: flex; flex-direction: column; gap: 12px; }
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+  }
+  .q-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .bar-label {
+    flex: 0 0 240px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar-wrap {
+    flex: 1;
+    background: var(--surface-muted);
+    border-radius: 4px;
+    height: 20px;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar-value { flex: 0 0 80px; text-align: right; font-size: 12px; color: var(--text-secondary); }
+  .empty { font-size: 13px; color: var(--text-muted); }
+  @media (max-width: 700px) {
+    .header { flex-direction: column; align-items: stretch; }
+    .bar-label { flex: 0 0 140px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <button id="newGroupBtn" class="primary">↻ Nuevo grupo</button>
+    <div class="code-block">
+      <div class="code-label">Código activo</div>
+      <div class="code-row">
+        <div id="codeDisplay">----</div>
+        <button id="copyBtn" class="icon" aria-label="Copiar código">⧉</button>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Participantes</div>
+        <div id="participantCount" class="metric-value">0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Puntuación prom.</div>
+        <div id="avgScore" class="metric-value">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusLine">Esperando que inicies un grupo nuevo.</div>
+  <div id="questionsContainer"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+(function(){
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTtW4iUxEftYa9TwIEnQC2ZcN6bkg9dtTw7Te627U3x3vXHyNovQJYyHnJE5LQ7IBPsUkcrBy7VgQvs/pub?gid=1030369385&single=true&output=csv";
+  const POLL_MS = 5000;
+  const STORAGE_KEY = "capacitacion_active_group_code";
+
+  const codeDisplay = document.getElementById('codeDisplay');
+  const statusLine = document.getElementById('statusLine');
+  const participantCount = document.getElementById('participantCount');
+  const avgScore = document.getElementById('avgScore');
+  const questionsContainer = document.getElementById('questionsContainer');
+  const newGroupBtn = document.getElementById('newGroupBtn');
+  const copyBtn = document.getElementById('copyBtn');
+
+  let activeCode = null;
+  let pollTimer = null;
+
+  function genCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out = '';
+    for (let i = 0; i < 4; i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+
+  function findKey(headers, patterns){
+    return headers.find(h => patterns.some(p => p.test(h)));
+  }
+
+  function loadActiveCode(){
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { activeCode = saved; codeDisplay.textContent = activeCode; }
+    } catch(e) {}
+  }
+
+  function startNewGroup(){
+    const code = genCode();
+    activeCode = code;
+    codeDisplay.textContent = code;
+    try { localStorage.setItem(STORAGE_KEY, code); } catch(e) {}
+    statusLine.textContent = 'Grupo activo. Los participantes deben escribir este código en el formulario.';
+    fetchAndRender();
+  }
+
+  async function fetchAndRender(){
+    if (!activeCode) return;
+    try {
+      const resp = await fetch(CSV_URL, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const text = await resp.text();
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const rawHeaders = parsed.meta.fields || [];
+
+      const codeKey = findKey(rawHeaders, [/c[oó]digo.*capacitaci/i, /c[oó]digo.*grupo/i]);
+      const scoreKey = findKey(rawHeaders, [/puntuaci[oó]n/i]);
+      const questionKeys = rawHeaders.filter(h => /^\s*\d+\s*\./.test(h))
+        .sort((a,b) => parseInt(a.match(/\d+/)[0],10) - parseInt(b.match(/\d+/)[0],10));
+
+      if (!codeKey) {
+        statusLine.textContent = 'No se encontró la columna de código en el Sheet.';
+        return;
+      }
+
+      const rows = parsed.data.filter(row => {
+        const val = (row[codeKey] || '').toString().trim().toUpperCase();
+        return val === activeCode.toUpperCase();
+      });
+
+      participantCount.textContent = rows.length;
+
+      if (scoreKey) {
+        const scores = rows.map(r => parseFloat(r[scoreKey])).filter(n => !isNaN(n));
+        avgScore.textContent = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '-';
+      }
+
+      questionsContainer.innerHTML = '';
+      questionKeys.forEach(qKey => {
+        const counts = {};
+        rows.forEach(r => {
+          const ans = (r[qKey] || '').toString().trim();
+          if (!ans) return;
+          counts[ans] = (counts[ans] || 0) + 1;
+        });
+        const total = Object.values(counts).reduce((a,b)=>a+b,0);
+        const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+
+        const card = document.createElement('div');
+        card.className = 'q-card';
+
+        const qTitle = document.createElement('div');
+        qTitle.className = 'q-title';
+        qTitle.textContent = qKey;
+        card.appendChild(qTitle);
+
+        if (sorted.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = 'Sin respuestas todavía.';
+          card.appendChild(empty);
+        } else {
+          sorted.forEach(([label, count]) => {
+            const pct = total ? Math.round((count/total)*100) : 0;
+            const row = document.createElement('div');
+            row.className = 'bar-row';
+
+            const lab = document.createElement('div');
+            lab.className = 'bar-label';
+            lab.title = label;
+            lab.textContent = label;
+
+            const barWrap = document.createElement('div');
+            barWrap.className = 'bar-wrap';
+            const bar = document.createElement('div');
+            bar.className = 'bar-fill';
+            bar.style.width = pct + '%';
+            barWrap.appendChild(bar);
+
+            const val = document.createElement('div');
+            val.className = 'bar-value';
+            val.textContent = count + ' (' + pct + '%)';
+
+            row.appendChild(lab);
+            row.appendChild(barWrap);
+            row.appendChild(val);
+            card.appendChild(row);
+          });
+        }
+        questionsContainer.appendChild(card);
+      });
+
+      const now = new Date();
+      statusLine.textContent = 'Actualizado ' + now.toLocaleTimeString() + ' · actualiza cada 5s';
+    } catch (err) {
+      statusLine.textContent = 'Error al leer el Sheet: ' + err.message;
+    }
+  }
+
+  newGroupBtn.addEventListener('click', () => {
+    if (pollTimer) clearInterval(pollTimer);
+    startNewGroup();
+    pollTimer = setInterval(fetchAndRender, POLL_MS);
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    if (!activeCode) return;
+    try {
+      await navigator.clipboard.writeText(activeCode);
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = '✓';
+      setTimeout(() => { copyBtn.textContent = orig; }, 1200);
+    } catch(e) {}
+  });
+
+  loadActiveCode();
+  if (activeCode) {
+    statusLine.textContent = 'Grupo activo. Los participantes deben escribir este código en el formulario.';
+    fetchAndRender();
+    pollTimer = setInterval(fetchAndRender, POLL_MS);
+  }
+})();
+</script>
+</body>
+</html>
