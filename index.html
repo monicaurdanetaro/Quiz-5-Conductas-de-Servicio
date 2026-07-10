@@ -28,19 +28,6 @@
     line-height: 1.5;
   }
   .container { max-width: 980px; margin: 0 auto; }
-
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.5rem 2rem;
-    margin-bottom: 1.75rem;
-  }
   button {
     font-family: inherit;
     font-size: 15px;
@@ -54,25 +41,61 @@
     transition: background 0.15s ease;
   }
   button:hover { background: #285f97; }
-  button.icon {
-    background: var(--surface-muted);
-    color: var(--text-secondary);
-    padding: 10px 12px;
-    font-size: 16px;
-  }
+  button.secondary { background: var(--surface-muted); color: var(--text-secondary); }
+  button.secondary:hover { background: var(--border); }
+  button.icon { background: var(--surface-muted); color: var(--text-secondary); padding: 10px 12px; font-size: 16px; }
   button.icon:hover { background: var(--border); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ---------- Pantalla 1: código ---------- */
+  #codeScreen {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 2rem;
+  }
+  #codeScreen .eyebrow { font-size: 15px; color: var(--text-secondary); }
+  #bigCode {
+    font-size: 96px;
+    font-weight: 800;
+    font-family: "SF Mono", Consolas, monospace;
+    letter-spacing: 12px;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 3rem;
+  }
+  #codeScreen .hint { font-size: 14px; color: var(--text-muted); max-width: 420px; }
+  #codeScreen .actions { display: flex; gap: 12px; }
+
+  /* ---------- Pantalla 2: resultados ---------- */
+  #resultsScreen { display: none; }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.75rem;
+  }
   .code-block { text-align: center; }
   .code-label { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .code-row { display: flex; align-items: center; gap: 10px; justify-content: center; }
-  #codeDisplay {
-    font-size: 42px;
+  #codeDisplaySmall {
+    font-size: 32px;
     font-weight: 700;
     font-family: "SF Mono", Consolas, monospace;
-    letter-spacing: 6px;
+    letter-spacing: 4px;
     color: var(--accent);
   }
-
   .metrics { display: flex; gap: 14px; }
   .metric {
     background: var(--surface-muted);
@@ -84,13 +107,7 @@
   .metric-label { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 2px; }
   .metric-value { font-size: 28px; font-weight: 700; }
 
-  #statusLine {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 1.5rem;
-    padding-left: 4px;
-  }
-
+  #statusLine { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; padding-left: 4px; }
   #questionsContainer { display: flex; flex-direction: column; gap: 16px; }
 
   .q-card {
@@ -99,12 +116,7 @@
     border-radius: var(--radius);
     padding: 1.5rem 1.75rem;
   }
-  .q-title {
-    font-size: 17px;
-    font-weight: 600;
-    margin-bottom: 1.1rem;
-    line-height: 1.45;
-  }
+  .q-title { font-size: 17px; font-weight: 600; margin-bottom: 1.1rem; line-height: 1.45; }
 
   .answer-block { margin-bottom: 0.9rem; }
   .answer-block:last-child { margin-bottom: 0; }
@@ -130,31 +142,10 @@
     padding: 2px 8px;
     flex-shrink: 0;
   }
-  .answer-bar-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .answer-bar-wrap {
-    flex: 1;
-    background: var(--surface-muted);
-    border-radius: 6px;
-    height: 22px;
-    overflow: hidden;
-  }
-  .answer-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 6px;
-    transition: width 0.3s ease;
-  }
-  .answer-value {
-    flex: 0 0 90px;
-    text-align: right;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
+  .answer-bar-row { display: flex; align-items: center; gap: 12px; }
+  .answer-bar-wrap { flex: 1; background: var(--surface-muted); border-radius: 6px; height: 22px; overflow: hidden; }
+  .answer-bar-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.3s ease; }
+  .answer-value { flex: 0 0 90px; text-align: right; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 
   .answer-block.correct .answer-bar-fill { background: var(--correct); }
   .answer-block.correct .answer-value { color: var(--correct); }
@@ -163,6 +154,7 @@
   .empty { font-size: 14px; color: var(--text-muted); }
 
   @media (max-width: 720px) {
+    #bigCode { font-size: 56px; letter-spacing: 8px; padding: 1.25rem 1.5rem; }
     .header { flex-direction: column; align-items: stretch; text-align: center; }
     .metrics { justify-content: center; }
     body { padding: 1.5rem 1rem; }
@@ -172,29 +164,44 @@
 </head>
 <body>
 <div class="container">
-  <div class="header">
-    <button id="newGroupBtn">↻ Nuevo grupo</button>
-    <div class="code-block">
-      <div class="code-label">Código activo</div>
-      <div class="code-row">
-        <div id="codeDisplay">----</div>
-        <button id="copyBtn" class="icon" aria-label="Copiar código">⧉</button>
-      </div>
-    </div>
-    <div class="metrics">
-      <div class="metric">
-        <div class="metric-label">Participantes</div>
-        <div id="participantCount" class="metric-value">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Puntuación prom.</div>
-        <div id="avgScore" class="metric-value">-</div>
-      </div>
+
+  <!-- Pantalla 1: código -->
+  <div id="codeScreen">
+    <div class="eyebrow">Código de este grupo</div>
+    <div id="bigCode">----</div>
+    <div class="hint">Los participantes deben escribir este código en la pregunta "Código de la capacitación" del formulario.</div>
+    <div class="actions">
+      <button id="newGroupBtn">↻ Nuevo grupo</button>
+      <button id="goResultsBtn" class="secondary" disabled>Ver respuestas →</button>
     </div>
   </div>
 
-  <div id="statusLine">Esperando que inicies un grupo nuevo.</div>
-  <div id="questionsContainer"></div>
+  <!-- Pantalla 2: resultados -->
+  <div id="resultsScreen">
+    <div class="header">
+      <button id="backToCodeBtn" class="secondary">← Ver código</button>
+      <div class="code-block">
+        <div class="code-label">Código activo</div>
+        <div class="code-row">
+          <div id="codeDisplaySmall">----</div>
+          <button id="copyBtn" class="icon" aria-label="Copiar código">⧉</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Participantes</div>
+          <div id="participantCount" class="metric-value">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Puntuación prom.</div>
+          <div id="avgScore" class="metric-value">-</div>
+        </div>
+      </div>
+    </div>
+    <div id="statusLine">Cargando resultados...</div>
+    <div id="questionsContainer"></div>
+  </div>
+
 </div>
 
 <script>
@@ -204,12 +211,17 @@
   const POLL_MS = 4000;
   const STORAGE_KEY = "capacitacion_active_group_code";
 
-  const codeDisplay = document.getElementById('codeDisplay');
+  const codeScreen = document.getElementById('codeScreen');
+  const resultsScreen = document.getElementById('resultsScreen');
+  const bigCode = document.getElementById('bigCode');
+  const codeDisplaySmall = document.getElementById('codeDisplaySmall');
   const statusLine = document.getElementById('statusLine');
   const participantCount = document.getElementById('participantCount');
   const avgScore = document.getElementById('avgScore');
   const questionsContainer = document.getElementById('questionsContainer');
   const newGroupBtn = document.getElementById('newGroupBtn');
+  const goResultsBtn = document.getElementById('goResultsBtn');
+  const backToCodeBtn = document.getElementById('backToCodeBtn');
   const copyBtn = document.getElementById('copyBtn');
 
   let activeCode = null;
@@ -232,20 +244,39 @@
     return m ? parseInt(m[1], 10) : null;
   }
 
+  function showCodeScreen(){
+    codeScreen.style.display = 'flex';
+    resultsScreen.style.display = 'none';
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  function showResultsScreen(){
+    codeScreen.style.display = 'none';
+    resultsScreen.style.display = 'block';
+    fetchAndRender();
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(fetchAndRender, POLL_MS);
+  }
+
+  function setCode(code){
+    activeCode = code;
+    bigCode.textContent = code;
+    codeDisplaySmall.textContent = code;
+    goResultsBtn.disabled = !code;
+  }
+
   function loadActiveCode(){
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) { activeCode = saved; codeDisplay.textContent = activeCode; }
+      if (saved) setCode(saved);
     } catch(e) {}
   }
 
   function startNewGroup(){
     const code = genCode();
-    activeCode = code;
-    codeDisplay.textContent = code;
+    setCode(code);
     try { localStorage.setItem(STORAGE_KEY, code); } catch(e) {}
-    statusLine.textContent = 'Grupo activo. Los participantes deben escribir este código en el formulario.';
-    fetchAndRender();
+    showCodeScreen();
   }
 
   async function getStructure(){
@@ -379,11 +410,9 @@
     }
   }
 
-  newGroupBtn.addEventListener('click', () => {
-    if (pollTimer) clearInterval(pollTimer);
-    startNewGroup();
-    pollTimer = setInterval(fetchAndRender, POLL_MS);
-  });
+  newGroupBtn.addEventListener('click', startNewGroup);
+  goResultsBtn.addEventListener('click', showResultsScreen);
+  backToCodeBtn.addEventListener('click', showCodeScreen);
 
   copyBtn.addEventListener('click', async () => {
     if (!activeCode) return;
@@ -396,11 +425,7 @@
   });
 
   loadActiveCode();
-  if (activeCode) {
-    statusLine.textContent = 'Grupo activo. Los participantes deben escribir este código en el formulario.';
-    fetchAndRender();
-    pollTimer = setInterval(fetchAndRender, POLL_MS);
-  }
+  showCodeScreen();
 })();
 </script>
 </body>
