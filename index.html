@@ -14,9 +14,8 @@
     --text-secondary: #5c5b54;
     --text-muted: #8f8d84;
     --accent: #2f6fb0;
-    --accent-light: #eaf2fa;
-    --top-answer: #1d9e75;
-    --top-answer-bg: #e6f6ef;
+    --correct: #1d9e75;
+    --correct-bg: #e6f6ef;
     --radius: 14px;
   }
   * { box-sizing: border-box; }
@@ -110,11 +109,26 @@
   .answer-block { margin-bottom: 0.9rem; }
   .answer-block:last-child { margin-bottom: 0; }
   .answer-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 14.5px;
     color: var(--text-primary);
     margin-bottom: 6px;
     line-height: 1.45;
     padding: 0 2px;
+  }
+  .correct-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--correct);
+    background: var(--correct-bg);
+    border-radius: 6px;
+    padding: 2px 8px;
+    flex-shrink: 0;
   }
   .answer-bar-row {
     display: flex;
@@ -142,9 +156,9 @@
     color: var(--text-secondary);
   }
 
-  .answer-block.top .answer-bar-fill { background: var(--top-answer); }
-  .answer-block.top .answer-value { color: var(--top-answer); }
-  .answer-block.top .answer-text { font-weight: 600; }
+  .answer-block.correct .answer-bar-fill { background: var(--correct); }
+  .answer-block.correct .answer-value { color: var(--correct); }
+  .answer-block.correct .answer-text { font-weight: 600; }
 
   .empty { font-size: 14px; color: var(--text-muted); }
 
@@ -185,7 +199,8 @@
 
 <script>
 (function(){
-  const API_URL = "https://script.google.com/macros/s/AKfycbxmLR_oGi49ncaOFooe-6bfO_VCNvumO4TfO-qealaRmZRdSBNTIi1HOtMgZKaSnOZg/exec";
+  const RESPONSES_URL = "https://script.google.com/macros/s/AKfycbxmLR_oGi49ncaOFooe-6bfO_VCNvumO4TfO-qealaRmZRdSBNTIi1HOtMgZKaSnOZg/exec";
+  const STRUCTURE_URL = "https://script.google.com/macros/s/AKfycbw_-1yS-R1XhtJarHk0MCKprfKNq-wLduPa04-BWp_cpXvB3BPIG0L5lMtHHGSWXIFwjQ/exec";
   const POLL_MS = 4000;
   const STORAGE_KEY = "capacitacion_active_group_code";
 
@@ -199,6 +214,7 @@
 
   let activeCode = null;
   let pollTimer = null;
+  let structureCache = null;
 
   function genCode(){
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -209,6 +225,11 @@
 
   function findKey(headers, patterns){
     return headers.find(h => patterns.some(p => p.test(h)));
+  }
+
+  function extractNum(str){
+    const m = (str || '').match(/^\s*(\d+)\s*\./);
+    return m ? parseInt(m[1], 10) : null;
   }
 
   function loadActiveCode(){
@@ -227,29 +248,40 @@
     fetchAndRender();
   }
 
+  async function getStructure(){
+    if (structureCache) return structureCache;
+    const resp = await fetch(STRUCTURE_URL, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' (estructura)');
+    const data = await resp.json();
+    structureCache = data.filter(q => extractNum(q.title) !== null);
+    return structureCache;
+  }
+
   async function fetchAndRender(){
     if (!activeCode) return;
     try {
-      const resp = await fetch(API_URL, { cache: 'no-store' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const rows = await resp.json();
-      if (!Array.isArray(rows) || rows.length === 0) {
-        statusLine.textContent = 'La API no devolvió filas todavía.';
+      const [structure, respPayload] = await Promise.all([
+        getStructure(),
+        fetch(RESPONSES_URL, { cache: 'no-store' }).then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' (respuestas)');
+          return r.json();
+        })
+      ]);
+
+      if (!Array.isArray(respPayload) || respPayload.length === 0) {
+        statusLine.textContent = 'La API de respuestas no devolvió filas todavía.';
         return;
       }
-      const headers = Object.keys(rows[0]);
-
+      const headers = Object.keys(respPayload[0]);
       const codeKey = findKey(headers, [/c[oó]digo.*capacitaci/i, /c[oó]digo.*grupo/i]);
       const scoreKey = findKey(headers, [/puntuaci[oó]n/i]);
-      const questionKeys = headers.filter(h => /^\s*\d+\s*\./.test(h))
-        .sort((a,b) => parseInt(a.match(/\d+/)[0],10) - parseInt(b.match(/\d+/)[0],10));
 
       if (!codeKey) {
         statusLine.textContent = 'No se encontró la columna de código.';
         return;
       }
 
-      const filtered = rows.filter(row => {
+      const filtered = respPayload.filter(row => {
         const val = (row[codeKey] || '').toString().trim().toUpperCase();
         return val === activeCode.toUpperCase();
       });
@@ -261,40 +293,59 @@
         avgScore.textContent = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '-';
       }
 
+      const headerByNum = {};
+      headers.forEach(h => {
+        const n = extractNum(h);
+        if (n !== null) headerByNum[n] = h;
+      });
+
       questionsContainer.innerHTML = '';
-      questionKeys.forEach(qKey => {
+      structure.forEach(q => {
+        const qNum = extractNum(q.title);
+        const respKey = headerByNum[qNum];
+
         const counts = {};
-        filtered.forEach(r => {
-          const ans = (r[qKey] || '').toString().trim();
-          if (!ans) return;
-          counts[ans] = (counts[ans] || 0) + 1;
-        });
-        const total = Object.values(counts).reduce((a,b)=>a+b,0);
-        const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+        if (respKey) {
+          filtered.forEach(r => {
+            const ans = (r[respKey] || '').toString().trim();
+            if (!ans) return;
+            counts[ans] = (counts[ans] || 0) + 1;
+          });
+        }
+        const totalAnswered = Object.values(counts).reduce((a,b)=>a+b,0);
 
         const card = document.createElement('div');
         card.className = 'q-card';
 
         const qTitle = document.createElement('div');
         qTitle.className = 'q-title';
-        qTitle.textContent = qKey.trim();
+        qTitle.textContent = q.title.trim();
         card.appendChild(qTitle);
 
-        if (sorted.length === 0) {
+        if (!q.choices || q.choices.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'empty';
-          empty.textContent = 'Sin respuestas todavía.';
+          empty.textContent = 'Sin opciones definidas.';
           card.appendChild(empty);
         } else {
-          sorted.forEach(([label, count], idx) => {
-            const pct = total ? Math.round((count/total)*100) : 0;
+          q.choices.forEach(choice => {
+            const count = counts[choice.text.trim()] || 0;
+            const pct = totalAnswered ? Math.round((count/totalAnswered)*100) : 0;
 
             const block = document.createElement('div');
-            block.className = 'answer-block' + (idx === 0 ? ' top' : '');
+            block.className = 'answer-block' + (choice.correct ? ' correct' : '');
 
             const text = document.createElement('div');
             text.className = 'answer-text';
-            text.textContent = label;
+            const span = document.createElement('span');
+            span.textContent = choice.text;
+            text.appendChild(span);
+            if (choice.correct) {
+              const badge = document.createElement('span');
+              badge.className = 'correct-badge';
+              badge.textContent = '✓ Correcta';
+              text.appendChild(badge);
+            }
 
             const barRow = document.createElement('div');
             barRow.className = 'answer-bar-row';
@@ -324,7 +375,7 @@
       const now = new Date();
       statusLine.textContent = 'Actualizado ' + now.toLocaleTimeString() + ' · actualiza cada 4s';
     } catch (err) {
-      statusLine.textContent = 'Error al leer la API: ' + err.message;
+      statusLine.textContent = 'Error: ' + err.message;
     }
   }
 
